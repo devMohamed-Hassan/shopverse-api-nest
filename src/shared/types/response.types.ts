@@ -1,12 +1,15 @@
 export interface ApiResponse<T = any> {
+  success: boolean;
   message: string;
-  result?: T;
-  error?: string;
-  statusCode?: number;
+  data?: T;
+  statusCode: number;
+  timestamp: string;
 }
 
-export interface PaginatedResponse<T = any> extends ApiResponse<T[]> {
-  pagination?: {
+export interface PaginatedResponse<T = any>
+  extends Omit<ApiResponse<T[]>, 'data'> {
+  data: T[];
+  pagination: {
     page: number;
     limit: number;
     total: number;
@@ -14,3 +17,15 @@ export interface PaginatedResponse<T = any> extends ApiResponse<T[]> {
   };
 }
 
+export interface ErrorResponse {
+  success: false;
+  message: string;
+  error?: string;
+  statusCode: number;
+  timestamp: string;
+  errors?: Array<{
+    field: string;
+    message: string;
+    code?: string;
+  }>;
+}

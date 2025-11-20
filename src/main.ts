@@ -3,12 +3,21 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import { AppConfig } from './config';
+import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import {
+  HttpExceptionFilter,
+  AllExceptionsFilter,
+} from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
   const appConfig = configService.get<AppConfig>('app');
   const logger = new Logger('Bootstrap');
+
+  app.useGlobalInterceptors(new ResponseInterceptor());
+
+  app.useGlobalFilters(new AllExceptionsFilter(), new HttpExceptionFilter());
 
   app.useGlobalPipes(
     new ValidationPipe({
