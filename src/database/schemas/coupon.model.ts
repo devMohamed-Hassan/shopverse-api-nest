@@ -21,7 +21,7 @@ export class Coupon {
     max: 100,
     required: true,
   })
-  discountPrecent: number;
+  discountPercent: number;
 
   @Prop({
     type: Date,
@@ -44,3 +44,5 @@ export const CouponModel = MongooseModule.forFeature([
 ]);
 
 couponSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+couponSchema.index({ code: 1 });
+couponSchema.index({ createdBy: 1 });

@@ -2,12 +2,13 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { CreateCouponDto } from './dto/create-coupon.dto';
 import { UpdateCouponDto } from './dto/update-coupon.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { Coupon, CouponDocument } from 'src/database/schemas/coupon.model';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 
 @Injectable()
 export class CouponService {
@@ -27,7 +28,7 @@ export class CouponService {
     const validCoupons = [
       {
         code: 'VADA-DADF-2Q-D312',
-        discountPrecent: 15,
+        discountPercent: 15,
         expiresAt: new Date('12-18-2025'),
       },
     ];
@@ -40,26 +41,65 @@ export class CouponService {
 
     const coupon = await this.couponModel.create({
       code,
-      discountPrecent: checkCouponValidation.discountPrecent,
+      discountPercent: checkCouponValidation.discountPercent,
       expiresAt: checkCouponValidation.expiresAt,
       createdBy: user._id,
     });
     return { message: 'Coupon created successfully', result: { coupon } };
   }
 
-  findAll() {
-    return `This action returns all coupon`;
+  async findAll(req?: any) {
+    const coupons = await this.couponModel.find().populate({
+      path: 'createdBy',
+      select: 'userName email -_id',
+    });
+    return { message: 'Coupons retrieved successfully', result: { coupons } };
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} coupon`;
+  async findOne(id: string) {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException('Invalid coupon ID');
+    }
+    const coupon = await this.couponModel
+      .findById(id)
+      .populate({ path: 'createdBy', select: 'userName email -_id' });
+    if (!coupon) {
+      throw new NotFoundException('Coupon not found');
+    }
+    return { message: 'Coupon retrieved successfully', result: { coupon } };
   }
 
-  update(id: number, updateCouponDto: UpdateCouponDto) {
-    return `This action updates a #${id} coupon`;
+  async update(req: any, id: string, updateCouponDto: UpdateCouponDto) {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException('Invalid coupon ID');
+    }
+    const coupon = await this.couponModel.findById(id);
+    if (!coupon) {
+      throw new NotFoundException('Coupon not found');
+    }
+
+    if (updateCouponDto.code && updateCouponDto.code !== coupon.code) {
+      const existingCoupon = await this.couponModel.findOne({
+        code: updateCouponDto.code,
+      });
+      if (existingCoupon) {
+        throw new ConflictException('Coupon code already exists');
+      }
+    }
+
+    Object.assign(coupon, updateCouponDto);
+    await coupon.save();
+    return { message: 'Coupon updated successfully', result: { coupon } };
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} coupon`;
+  async remove(id: string) {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException('Invalid coupon ID');
+    }
+    const coupon = await this.couponModel.findByIdAndDelete(id);
+    if (!coupon) {
+      throw new NotFoundException('Coupon not found');
+    }
+    return { message: 'Coupon removed successfully', result: {} };
   }
 }

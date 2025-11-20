@@ -1,7 +1,7 @@
 import z from 'zod';
 
 export const createCategorySchema = z.strictObject({
-  name: z.string().min(3).max(10),
+  name: z.string().min(3).max(100).trim(),
   description: z.string().min(3).max(1000).optional(),
   brands: z.array(z.string()).optional(),
 });

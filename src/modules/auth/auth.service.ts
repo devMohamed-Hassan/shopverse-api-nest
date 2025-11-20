@@ -26,6 +26,8 @@ import { ResetPasswordDto } from './dto/resetPassword.dto';
 import { UpdateProfileDto } from './dto/updateProfile.dto';
 import { ChangePasswordDto } from './dto/changePassword.dto';
 import { UserDocument as IUserDocument } from 'src/database/schemas/user.model';
+import { transformUserToResponse } from './utils/user.transform';
+import { UserResponseDto, AuthTokensDto } from './dto/user-response.dto';
 
 @Injectable()
 export class AuthService {
@@ -69,19 +71,13 @@ export class AuthService {
       createdBy: user._id,
       type: OtpTypeEnum.CONFIRMEMAIL,
     });
-    const accessToken = createJwt(
-      { userId: user._id.toString(), userEmail: user.email },
-      this.configService,
-      'access',
-    );
-    const refreshToken = createJwt(
-      { userId: user._id.toString(), userEmail: user.email },
-      this.configService,
-      'refresh',
-    );
+
     return {
-      message: 'User registered successfully. Please verify your email.',
-      result: { accessToken, refreshToken },
+      message: 'User registered successfully. Please verify your email to complete registration.',
+      result: {
+        email: user.email,
+        expiresIn: '10 minutes',
+      },
     };
   }
 
@@ -156,20 +152,51 @@ export class AuthService {
       throw new BadRequestException('Invalid OTP');
     }
 
-    await this.userModel.updateOne(
+    await this.otpModel.deleteOne({ _id: checkOtp._id });
+
+    const confirmedUser = await this.userModel.findOneAndUpdate(
       { email },
-      { $set: { confirmEmail: new Date() } },
+      { 
+        $set: { 
+          confirmEmail: new Date(),
+          lastLogin: new Date(),
+        } 
+      },
+      { new: true },
     );
 
-    await this.otpModel.deleteOne({ _id: checkOtp._id });
-    return { message: 'Email confirmed successfully' };
+    if (!confirmedUser) {
+      throw new NotFoundException('User not found after email confirmation');
+    }
+
+    const accessToken = createJwt(
+      { userId: confirmedUser._id.toString(), userEmail: confirmedUser.email },
+      this.configService,
+      'access',
+    );
+    const refreshToken = createJwt(
+      { userId: confirmedUser._id.toString(), userEmail: confirmedUser.email },
+      this.configService,
+      'refresh',
+    );
+
+    const userResponse = transformUserToResponse(confirmedUser);
+    const tokens: AuthTokensDto = { accessToken, refreshToken };
+
+    return {
+      message: 'Email confirmed successfully. You can now access your account.',
+      result: {
+        user: userResponse,
+        tokens,
+      },
+    };
   }
 
   async login(body: LoginDto) {
     const { email, password } = body;
     const checkUser = await this.userModel.findOne({ email });
     if (!checkUser) {
-      throw new BadRequestException('Invalid credentials');
+      throw new BadRequestException('Invalid email or password');
     }
 
     if (!checkUser.confirmEmail) {
@@ -178,10 +205,23 @@ export class AuthService {
       );
     }
 
+    if (!checkUser.isActive) {
+      throw new UnauthorizedException('Your account has been deactivated. Please contact support.');
+    }
+
+    if (checkUser.isBlocked) {
+      throw new UnauthorizedException('Your account has been blocked. Please contact support.');
+    }
+
     const isPasswordValid = await compare(password, checkUser.password);
     if (!isPasswordValid) {
-      throw new BadRequestException('Invalid credentials');
+      throw new BadRequestException('Invalid email or password');
     }
+
+    await this.userModel.updateOne(
+      { _id: checkUser._id },
+      { $set: { lastLogin: new Date() } },
+    );
 
     const accessToken = createJwt(
       { userId: checkUser._id.toString(), userEmail: checkUser.email },
@@ -193,19 +233,25 @@ export class AuthService {
       this.configService,
       'refresh',
     );
+
+    const userResponse = transformUserToResponse(checkUser);
+    const tokens: AuthTokensDto = { accessToken, refreshToken };
+
     return {
       message: 'Login successful',
-      result: { accessToken, refreshToken },
+      result: {
+        user: userResponse,
+        tokens,
+      },
     };
   }
 
   profile(req: { user: IUserDocument }) {
     const user = req.user;
-    const userObject = user.toObject ? user.toObject() : user;
-    const { password, ...userWithoutPassword } = userObject;
+    const userResponse = transformUserToResponse(user);
     return {
       message: 'Profile retrieved successfully',
-      result: { user: userWithoutPassword },
+      result: { user: userResponse },
     };
   }
 
@@ -222,6 +268,14 @@ export class AuthService {
         throw new UnauthorizedException('Email not confirmed');
       }
 
+      if (!user.isActive) {
+        throw new UnauthorizedException('Your account has been deactivated');
+      }
+
+      if (user.isBlocked) {
+        throw new UnauthorizedException('Your account has been blocked');
+      }
+
       const newAccessToken = createJwt(
         { userId: user._id.toString(), userEmail: user.email },
         this.configService,
@@ -233,11 +287,19 @@ export class AuthService {
         'refresh',
       );
 
+      const tokens: AuthTokensDto = {
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+      };
+
       return {
         message: 'Token refreshed successfully',
-        result: { accessToken: newAccessToken, refreshToken: newRefreshToken },
+        result: tokens,
       };
     } catch (error) {
+      if (error instanceof NotFoundException || error instanceof UnauthorizedException) {
+        throw error;
+      }
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
   }
@@ -296,6 +358,10 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
+    if (!user.isActive) {
+      throw new UnauthorizedException('Your account has been deactivated');
+    }
+
     const checkOtp = await this.otpModel.findOne({
       createdBy: user._id,
       type: OtpTypeEnum.RESETPASSWORD,
@@ -312,7 +378,6 @@ export class AuthService {
     }
 
     const hashedPassword = await hash(newPassword, this.configService);
-
     await this.userModel.updateOne(
       { email },
       {
@@ -354,12 +419,11 @@ export class AuthService {
       throw new NotFoundException('User not found after update');
     }
 
-    const userObject = updatedUser.toObject();
-    const { password, ...userWithoutPassword } = userObject;
+    const userResponse = transformUserToResponse(updatedUser);
 
     return {
       message: 'Profile updated successfully',
-      result: { user: userWithoutPassword },
+      result: { user: userResponse },
     };
   }
 
@@ -371,13 +435,16 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
+    if (!user.isActive) {
+      throw new UnauthorizedException('Your account has been deactivated');
+    }
+
     const isPasswordValid = await compare(currentPassword, user.password);
     if (!isPasswordValid) {
       throw new BadRequestException('Current password is incorrect');
     }
 
     const hashedPassword = await hash(newPassword, this.configService);
-
     await this.userModel.updateOne(
       { _id: userId },
       {

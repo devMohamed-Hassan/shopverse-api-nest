@@ -41,10 +41,22 @@ export class AuthGuard implements CanActivate {
         throw new NotFoundException('User not found');
       }
 
+      if (!user.confirmEmail) {
+        throw new UnauthorizedException('Please confirm your email');
+      }
+
+      if (!user.isActive) {
+        throw new UnauthorizedException('Your account has been deactivated');
+      }
+
+      if (user.isBlocked) {
+        throw new UnauthorizedException('Your account has been blocked');
+      }
+
       request.user = user;
       return true;
     } catch (error) {
-      if (error instanceof NotFoundException) {
+      if (error instanceof NotFoundException || error instanceof UnauthorizedException) {
         throw error;
       }
       throw new UnauthorizedException('Invalid or expired token');

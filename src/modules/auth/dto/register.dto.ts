@@ -6,7 +6,15 @@ export const registerSchema = z.strictObject({
   lastName: z.string().min(3).max(10).optional(),
   userName: z.string().min(3).max(27),
   email: z.email(),
-  password: z.string().min(3).max(20).optional(),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .max(100, 'Password must not exceed 100 characters')
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+      'Password must contain at least one uppercase letter, one lowercase letter, and one number',
+    )
+    .optional(),
   age: z.number().min(16).optional(),
   phone: z
     .string()

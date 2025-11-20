@@ -6,7 +6,7 @@ import slugify from 'slugify';
   timestamps: true,
 })
 export class Product {
-  @Prop({ type: String, minlength: 3, maxlength: 100, required: true })
+  @Prop({ type: String, minlength: 3, maxlength: 200, required: true, trim: true })
   name: string;
 
   @Prop({ type: String, minlength: 3, maxlength: 1000 })
@@ -27,8 +27,8 @@ export class Product {
   @Prop({ type: Number, required: true })
   originalPrice: number;
 
-  @Prop({ type: Number, default: 0 })
-  discountPresent: number;
+  @Prop({ type: Number, default: 0, min: 0, max: 100 })
+  discountPercent: number;
 
   @Prop({ type: Number, required: true })
   salePrice: number;
@@ -73,3 +73,11 @@ productSchema.pre('updateOne', function (next) {
   }
   next();
 });
+
+productSchema.index({ name: 1 });
+productSchema.index({ slug: 1 });
+productSchema.index({ brand: 1 });
+productSchema.index({ category: 1 });
+productSchema.index({ createdBy: 1 });
+productSchema.index({ stock: 1 });
+productSchema.index({ salePrice: 1 });

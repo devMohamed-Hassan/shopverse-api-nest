@@ -9,9 +9,10 @@ export class Category {
   @Prop({
     type: String,
     minlength: 3,
-    maxlength: 10,
+    maxlength: 100,
     required: true,
     unique: true,
+    trim: true,
   })
   name: string;
 
@@ -61,3 +62,7 @@ categorySchema.pre('updateOne', function (next) {
   }
   next();
 });
+
+categorySchema.index({ name: 1 });
+categorySchema.index({ slug: 1 });
+categorySchema.index({ createdBy: 1 });

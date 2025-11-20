@@ -8,6 +8,8 @@ import {
   UnauthorizedException,
   UseGuards,
   UsePipes,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { ZodValidationPipe } from 'src/common/pipes/zod.pipe';
@@ -29,24 +31,28 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('/register')
+  @HttpCode(HttpStatus.CREATED)
   @UsePipes(new ZodValidationPipe(registerSchema))
   async register(@Body() body: RegisterDto) {
     return await this.authService.register(body);
   }
 
   @Post('/resend-otp')
+  @HttpCode(HttpStatus.OK)
   @UsePipes(new ZodValidationPipe(resendOtpSchema))
   async resendOtp(@Body() body: ResendOtpDto) {
     return await this.authService.resendOtp(body);
   }
 
   @Post('/confirm-email')
+  @HttpCode(HttpStatus.OK)
   @UsePipes(new ZodValidationPipe(confrimEmailSchema))
   async confirmEmail(@Body() body: ConfrimEmailDto) {
     return await this.authService.confrimEmail(body);
   }
 
   @Post('/login')
+  @HttpCode(HttpStatus.OK)
   @UsePipes(new ZodValidationPipe(loginSchema))
   async login(@Body() body: LoginDto) {
     return await this.authService.login(body);
@@ -54,11 +60,13 @@ export class AuthController {
 
   @Get('/profile')
   @UseGuards(AuthGuard)
+  @HttpCode(HttpStatus.OK)
   profile(@Req() req: { user: any }) {
     return this.authService.profile(req);
   }
 
   @Post('/refresh-token')
+  @HttpCode(HttpStatus.OK)
   async refreshToken(@Req() req: { headers: { authorization?: string } }) {
     const authHeader = req.headers.authorization;
 
@@ -77,17 +85,20 @@ export class AuthController {
 
   @Post('/logout')
   @UseGuards(AuthGuard)
+  @HttpCode(HttpStatus.OK)
   logout() {
     return this.authService.logout();
   }
 
   @Post('/forgot-password')
+  @HttpCode(HttpStatus.OK)
   @UsePipes(new ZodValidationPipe(forgotPasswordSchema))
   async forgotPassword(@Body() body: ForgotPasswordDto) {
     return await this.authService.forgotPassword(body);
   }
 
   @Post('/reset-password')
+  @HttpCode(HttpStatus.OK)
   @UsePipes(new ZodValidationPipe(resetPasswordSchema))
   async resetPassword(@Body() body: ResetPasswordDto) {
     return await this.authService.resetPassword(body);
@@ -95,6 +106,7 @@ export class AuthController {
 
   @Patch('/update-profile')
   @UseGuards(AuthGuard)
+  @HttpCode(HttpStatus.OK)
   @UsePipes(new ZodValidationPipe(updateProfileSchema))
   async updateProfile(@Req() req: { user: any }, @Body() body: UpdateProfileDto) {
     return await this.authService.updateProfile(req.user._id.toString(), body);
@@ -102,6 +114,7 @@ export class AuthController {
 
   @Patch('/change-password')
   @UseGuards(AuthGuard)
+  @HttpCode(HttpStatus.OK)
   @UsePipes(new ZodValidationPipe(changePasswordSchema))
   async changePassword(@Req() req: { user: any }, @Body() body: ChangePasswordDto) {
     return await this.authService.changePassword(req.user._id.toString(), body);

@@ -37,15 +37,13 @@ export class User implements IUser {
   })
   lastName: string;
 
-  @Virtual({
-    get: function (this: HydratedDocument<User>) {
-      const parts = [this.firstName, this.lastName].filter(Boolean);
-      return parts.length > 0 ? parts.join(' ') : '';
-    },
-    set: function (this: HydratedDocument<User>, value: string) {
-      const [firstName, lastName] = value.split(' ') || [];
-      this.set({ firstName, lastName });
-    },
+  @Prop({
+    type: String,
+    required: true,
+    minlength: 3,
+    maxlength: 27,
+    trim: true,
+    unique: true,
   })
   userName: string;
 
@@ -82,7 +80,7 @@ export class User implements IUser {
   })
   provider: ProviderEnum;
 
-  @Prop({ type: Number, minlength: 16 })
+  @Prop({ type: Number, min: 16, max: 120 })
   age: number;
 
   @Prop({ type: String })
@@ -103,6 +101,18 @@ export class User implements IUser {
 
   @Prop({ type: Object })
   passwordOtp: IOtp;
+
+  @Prop({ type: String })
+  avatar: string;
+
+  @Prop({ type: Boolean, default: true })
+  isActive: boolean;
+
+  @Prop({ type: Boolean, default: false })
+  isBlocked: boolean;
+
+  @Prop({ type: Date })
+  lastLogin: Date;
 }
 
 export const userSchema = SchemaFactory.createForClass(User);
@@ -117,3 +127,9 @@ userSchema.pre('save', async function (next) {
   }
   next();
 });
+
+userSchema.index({ email: 1 }, { unique: true });
+userSchema.index({ userName: 1 }, { unique: true });
+userSchema.index({ role: 1 });
+userSchema.index({ isActive: 1 });
+userSchema.index({ isBlocked: 1 });

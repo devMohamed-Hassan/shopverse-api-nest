@@ -15,6 +15,10 @@ export interface IUser {
   credentialsChangedAt: Date;
   emailOtp: IOtp;
   passwordOtp: IOtp;
+  avatar?: string;
+  isActive: boolean;
+  isBlocked: boolean;
+  lastLogin?: Date;
 }
 
 export interface IOtp {

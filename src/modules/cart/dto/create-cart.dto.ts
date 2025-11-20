@@ -16,13 +16,13 @@ export const createCartSchema = z.strictObject({
 export type CreateCartDto = z.infer<typeof createCartSchema>;
 
 export const addToCartSchema = z.strictObject({
-  productId: z.string(),
-  quantity: z.number(),
+  productId: z.string().min(1, 'Product ID is required'),
+  quantity: z.number().int().positive().min(1, 'Quantity must be at least 1'),
 });
 export type AddToCartDto = z.infer<typeof addToCartSchema>;
 
 export const updateCartProductSchema = z.strictObject({
-  productId: z.string(),
-  quantity: z.number(),
+  productId: z.string().min(1, 'Product ID is required'),
+  quantity: z.number().int().nonnegative().min(0, 'Quantity cannot be negative'),
 });
 export type UpdateCartProductDto = z.infer<typeof updateCartProductSchema>;

@@ -26,84 +26,117 @@ export class ProductService {
 
   async create(
     req: any,
-    parsedBody: CreateProductDto,
+    body: CreateProductDto,
     files: Array<Express.Multer.File>,
   ) {
     const user = req.user;
 
-    if (parsedBody.category) {
-      const checkCategory = await this.categoryModel.findById(
-        parsedBody.category,
-      );
+    if (body.category) {
+      const checkCategory = await this.categoryModel.findById(body.category);
       if (!checkCategory) {
-        return new NotFoundException('Category not found');
+        throw new NotFoundException('Category not found');
       }
     }
-    if (parsedBody.brand) {
-      const checkBrand = await this.brandModel.findById(parsedBody.brand);
+    if (body.brand) {
+      const checkBrand = await this.brandModel.findById(body.brand);
       if (!checkBrand) {
-        return new NotFoundException('Brand not found');
+        throw new NotFoundException('Brand not found');
       }
     }
 
     const images: string[] = [];
     if (files?.length) {
       for (const file of files) {
-        images?.push(file.filename);
+        images.push(file.filename);
       }
     }
-    const product = await this.productModel.create({
-      ...parsedBody,
+
+    const productData: any = {
+      ...body,
       images,
       createdBy: user._id,
-    });
-    return { message: 'Product created successfulyy', result: { product } };
+    };
+
+    const product = await this.productModel.create(productData);
+    await product.populate([
+      { path: 'brand', select: 'name slug image -_id' },
+      { path: 'category', select: 'name slug image -_id' },
+    ]);
+    return { message: 'Product created successfully', result: { product } };
   }
 
   async findAll() {
-    const products = await this.productModel.find();
-    return { message: 'Done', result: { products } };
+    const products = await this.productModel
+      .find()
+      .populate({ path: 'brand', select: 'name slug image -_id' })
+      .populate({ path: 'category', select: 'name slug image -_id' });
+    return {
+      message: 'Products retrieved successfully',
+      result: { products },
+    };
   }
 
   async findOne(id: string) {
-    const product = await this.productModel.findById(id);
-    return { message: 'Done', result: { product } };
+    const product = await this.productModel
+      .findById(id)
+      .populate({ path: 'brand', select: 'name slug image -_id' })
+      .populate({ path: 'category', select: 'name slug image -_id' });
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+    return { message: 'Product retrieved successfully', result: { product } };
   }
 
   async update(
     req: any,
     id: string,
-    parsedBody: UpdateProductDto,
-    files: Array<Express.Multer.File>,
+    body: UpdateProductDto,
+    files?: Array<Express.Multer.File>,
   ) {
     const user = req.user;
     const checkProduct = await this.productModel.findById(id);
     if (!checkProduct) {
-      return new ConflictException('Product not found');
+      throw new NotFoundException('Product not found');
     }
-    const updateData: any = { ...parsedBody, updatedBy: user._id };
-    const images: string[] = [];
-    if (files?.length) {
-      for (const file of files) {
-        images?.push(file.filename);
+
+    if (body.category) {
+      const checkCategory = await this.categoryModel.findById(body.category);
+      if (!checkCategory) {
+        throw new NotFoundException('Category not found');
       }
     }
-    const updatedProduct = await this.productModel.updateOne(
-      { _id: id },
-      { $set: updateData, $addToSet: { images: { $each: images } } },
-    );
+    if (body.brand) {
+      const checkBrand = await this.brandModel.findById(body.brand);
+      if (!checkBrand) {
+        throw new NotFoundException('Brand not found');
+      }
+    }
+
+    const updateData: any = { ...body, updatedBy: user._id };
+    if (files?.length) {
+      const images: string[] = [];
+      for (const file of files) {
+        images.push(file.filename);
+      }
+      updateData.images = images;
+    }
+
+    const updatedProduct = await this.productModel
+      .findByIdAndUpdate(id, updateData, { new: true })
+      .populate({ path: 'brand', select: 'name slug image -_id' })
+      .populate({ path: 'category', select: 'name slug image -_id' });
+
     return {
       message: 'Product updated successfully',
-      result: updatedProduct,
+      result: { product: updatedProduct },
     };
   }
 
   async removeOne(id: string) {
-    const product = await this.productModel.findById(id);
+    const product = await this.productModel.findByIdAndDelete(id);
     if (!product) {
-      return new NotFoundException('Product not found');
+      throw new NotFoundException('Product not found');
     }
-    await this.productModel.deleteOne({ _id: id });
-    return { message: 'Product removed successfully' };
+    return { message: 'Product removed successfully', result: {} };
   }
 }

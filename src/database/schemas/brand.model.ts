@@ -9,9 +9,10 @@ export class Brand {
   @Prop({
     type: String,
     minlength: 3,
-    maxlength: 10,
+    maxlength: 100,
     required: true,
     unique: true,
+    trim: true,
   })
   name: string;
 
@@ -55,3 +56,7 @@ brandSchema.pre('updateOne', function (next) {
   }
   next();
 });
+
+brandSchema.index({ name: 1 });
+brandSchema.index({ slug: 1 });
+brandSchema.index({ createdBy: 1 });

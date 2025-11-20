@@ -158,10 +158,10 @@ export class CartService {
     }
 
     const discountAmount =
-      (checkCart.totalPrice * checkCoupon.discountPrecent) / 100;
+      (checkCart.totalPrice * checkCoupon.discountPercent) / 100;
     const totalAfterDiscount = checkCart.totalPrice - discountAmount;
     checkCart.coupon = checkCoupon._id;
-    checkCart.discount = checkCoupon.discountPrecent;
+    checkCart.discount = checkCoupon.discountPercent;
     checkCart.totalPriceAfterDiscount = totalAfterDiscount;
     await checkCart.save();
     return {

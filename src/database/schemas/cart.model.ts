@@ -20,9 +20,9 @@ export class Cart {
         ref: 'Product',
         required: true,
       },
-      quantity: { type: Number, required: true },
-      price: { type: Number, required: true },
-      total: { type: Number, required: true },
+      quantity: { type: Number, required: true, min: 1 },
+      price: { type: Number, required: true, min: 0 },
+      total: { type: Number, required: true, min: 0 },
     },
   ])
   items: {
@@ -32,16 +32,16 @@ export class Cart {
     total: number;
   }[];
 
-  @Prop({ type: Number, required: true })
+  @Prop({ type: Number, required: true, min: 0 })
   totalPrice: number;
 
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Coupon' })
   coupon: Types.ObjectId;
 
-  @Prop({ type: Number, default: 0 })
+  @Prop({ type: Number, default: 0, min: 0 })
   discount: number;
 
-  @Prop({ type: Number })
+  @Prop({ type: Number, min: 0 })
   totalPriceAfterDiscount: number;
 }
 
@@ -50,3 +50,6 @@ export type CartDocument = HydratedDocument<Cart>;
 export const CartModel = MongooseModule.forFeature([
   { name: Cart.name, schema: cartSchema },
 ]);
+
+cartSchema.index({ user: 1 });
+cartSchema.index({ 'items.productId': 1 });
