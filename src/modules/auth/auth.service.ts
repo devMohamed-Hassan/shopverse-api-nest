@@ -13,7 +13,7 @@ import { User } from 'src/database/schemas/user.model';
 import { type RegisterDto } from './dto/register.dto';
 import { createOtp } from 'src/common/utils/create.otp';
 import { sendEmail } from 'src/common/utils/sendEmail/send.email';
-import { template } from 'src/common/utils/sendEmail/generateHTML';
+import { template } from 'src/common/utils/sendEmail/emailTemplate';
 import { OtpTypeEnum } from 'src/shared/types/user.types';
 import { Otp, OtpDocument } from 'src/database/schemas/otp.model';
 import { ResendOtpDto } from './dto/resendOtp.dto';
